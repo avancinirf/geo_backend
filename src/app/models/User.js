@@ -1,10 +1,12 @@
 import UserRepository from '../repositories/UserRepository';
 import bcrypt from 'bcryptjs';
+import { Types } from 'mongoose';
 import { UserException } from '../../Utils';
 
 export class UserFactory {
   static getByObject(userObject) {
     return new User(
+      userObject._id,
       userObject.name,
       userObject.email,
       userObject.password,
@@ -14,12 +16,19 @@ export class UserFactory {
   }
   
   static async getByEmail(email) {
-    return UserFactory.getByUserObject(await userRepository.getUserByEmail(email));
+    const user = await UserRepository.findOne({ email });
+    console.log(user);
+    return UserFactory.getByObject(await UserRepository.findOne({ email }));
+  }
+
+  static async getById(_id) {
+    return UserFactory.getByObject(await UserRepository.findOne({ _id: Types.ObjectId(_id) }));
   }
 }
 
 class User {
-  constructor(name, email, password, password_hash = null, admin) {
+  constructor(_id = null, name, email, password, password_hash = null, admin = false) {
+    this._id = _id;
     this.name = name;
     this.email = email;
     this.password = password;
@@ -28,12 +37,24 @@ class User {
     this.admin = admin;
   }
 
-  async setPassword_hash() {
+  async setPassword_hash(password) {
+    this.password = password;
     this.password_hash = await bcrypt.hash(this.password, 8);
   }
 
-  async checkPassword(password, password_hash) {
-    return (await bcrypt.compare(password, password_hash));
+  async checkPassword(password) {
+    return (await bcrypt.compare(password, this.password_hash));
+  }
+
+  async userExists() {
+    const teste = !!(await UserRepository.findOne({ email: this.email }));
+    return !!(await UserRepository.findOne({ email: this.email }));
+  }
+
+  setFields(e) {
+    this.name = e.name || this.name;
+    this.email = e.email || this.email;
+    this.admin = e.admin || this.admin;
   }
 
   async create() {
@@ -41,9 +62,7 @@ class User {
       if((await this.userExists())) {
         throw new UserException('Email already exists.');
       }
-      await this.setPassword_hash();
-      const resultado = (await UserRepository.create(this.toJSON()));
-      return resultado;
+      await this.setPassword_hash(this.password);
       return (await UserRepository.create(this.toJSON()));
     } catch (Exception) {
       if (Exception instanceof UserException) {
@@ -53,28 +72,23 @@ class User {
     }
   }
 
-  async update() {
+  async update(fields) {
     try {
-      const user = await UserRepository.findOne({ email: this.email });
-      if (!user) {
-        throw new UserException('User not exists.');
+      if (this.email !== fields.email && (await userExists())) {
+        throw new UserException('Email already exists.');
       }
-      if (!(await this.checkPassword(password, user.password_hash))) {
-        throw new UserException('Password does not match.');
+      this.setFields(fields);
+      if (fields.new_password) {
+        await this.setPassword_hash(fields.new_password);
       }
-      await this.setPassword_hash();
-      return (await UserRepository.findOneAndUpdate({ email: this.email }, this.toJSON()));
+      return (await UserRepository.findOneAndUpdate({ _id: Types.ObjectId(this._id) }, this.toJSON(), { new: true }));
     } catch (Exception) {
       if (Exception instanceof UserException) {
         throw Exception;
       }
+      console.log("teste",Exception)
       throw new UserException('Internal error.', 500);
     }
-  }
-
-  async userExists() {
-    const teste = !!(await UserRepository.findOne({ email: this.email }));
-    return !!(await UserRepository.findOne({ email: this.email }));
   }
   
   toJSON() {
