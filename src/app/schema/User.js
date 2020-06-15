@@ -1,4 +1,5 @@
-import { Schema } from 'mongoose';
+import mongoose from 'mongoose';
+const Schema = mongoose.Schema;
 
 const defaultString = {
   type: String,
@@ -18,5 +19,4 @@ const UserSchema = new Schema({
   admin: { type: Boolean, required: true, default: false }
 }, { timestamps: true });
 // TODO - Alterar o nome dos campos: timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
-
-export default UserSchema;
+export default mongoose.model('User', UserSchema);

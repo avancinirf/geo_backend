@@ -1,8 +1,9 @@
-import UserRepository from '../repositories/UserRepository';
 import bcrypt from 'bcryptjs';
 import { Types } from 'mongoose';
 import { UserException } from '../../Utils';
+import Model from '../schema/User';
 
+/*
 export class UserFactory {
   static getByObject(userObject) {
     return new User(
@@ -25,18 +26,24 @@ export class UserFactory {
     return UserFactory.getByObject(await UserRepository.findOne({ _id: Types.ObjectId(_id) }));
   }
 }
-
-class User {
-  constructor(_id = null, name, email, password, password_hash = null, admin = false) {
-    this._id = _id;
-    this.name = name;
-    this.email = email;
-    this.password = password;
-    this.new_password = password;
-    this.password_hash = password_hash;
-    this.admin = admin;
+*/
+class User extends Model {
+  constructor(data) {
+    super(data);
+    /*if (data) {
+      this.email = data.email;
+      this.ame = data.name;
+      this.password_hash = data.password_hash;
+    }*/
   }
 
+  async checkPassword(password) {
+    return (await bcrypt.compare(password, this.password_hash));
+  }
+
+
+
+  /*
   async setPassword_hash(password) {
     this.password = password;
     this.password_hash = await bcrypt.hash(this.password, 8);
@@ -99,7 +106,7 @@ class User {
       admin: this.admin
     };
   }
-
+  */
 
 }
 

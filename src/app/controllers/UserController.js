@@ -1,6 +1,6 @@
 import * as Yup from 'yup';
 
-import { UserFactory } from '../models/User';
+import User from '../models/User';
 
 class UserController {
   async store(req, res) {
@@ -10,20 +10,22 @@ class UserController {
         email: Yup.string().email().required(),
         password: Yup.string().required().min(6)
       });
-
+      
       if (!(await schema.isValid(req.body))) {
         return res.status(400).json({ error: 'Validation fails.' });  
       }
 
-      const user = UserFactory.getByObject(req.body);
-      const { _id, name, email, admin } = (await user.create());
+      const { _id, name, email, admin } = (await User.create(req.body));
       return res.json({ _id, name, email, admin });
+      return res.json({ ok: true });
     } catch (err) {
+      console.log(err);
       return res.status(err.code).json({ error: err.message });
     }
   }
 
   async update(req, res) {
+    /*
     try {
       const schema = Yup.object().shape({
         name: Yup.string(),
@@ -50,7 +52,7 @@ class UserController {
 
     } catch (err) {
       return res.status(err.code).json({ error: err.message });
-    }
+    }*/
   }
 
 }
