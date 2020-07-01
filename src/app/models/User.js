@@ -1,138 +1,115 @@
+import UserModel from '../schema/User';
 import bcrypt from 'bcryptjs';
-import { Types } from 'mongoose';
-import { UserException } from '../../Utils';
-import Model from '../schema/User';
+import { Types } from 'mongoose';
 
-/*
 export class UserFactory {
-  static getByObject(userObject) {
-    return new User(
-      userObject._id,
-      userObject.name,
-      userObject.email,
-      userObject.password,
-      userObject.password_hash,
-      userObject.admin
-    );
+  static loadFromJSON(json) {
+    const user = new User();
+    user.loadJSON(json);
+    return user;  
   }
   
-  static async getByEmail(email) {
-    const user = await UserRepository.findOne({ email });
-    console.log(user);
-    return UserFactory.getByObject(await UserRepository.findOne({ email }));
+  static async getById(_id) {
+    const userAsJson = await UserModel.findById(_id);
+    if (!userAsJson) return userAsJson;
+    return new User().loadJSON(userAsJson);
   }
 
-  static async getById(_id) {
-    return UserFactory.getByObject(await UserRepository.findOne({ _id: Types.ObjectId(_id) }));
+  static async getByEmail(email) {
+    const userAsJson = await UserModel.findOne({ email });
+    if (!userAsJson) return userAsJson;
+    return new User().loadJSON(userAsJson);
+  }
+
+  static async getEmptyUser() {
+    return new User();
   }
 }
-*/
-class User extends Model {
-  constructor(data) {
-    super(data);
-    /*if (data) {
-      this.email = data.email;
-      this.ame = data.name;
-      this.password_hash = data.password_hash;
-    }*/
+
+class User {
+  constructor() {
   }
 
   async checkPassword(password) {
-    return (await bcrypt.compare(password, this.password_hash));
+    return (await bcrypt.compare(password, this.password));
   }
 
-
-
-  /*
-  async setPassword_hash(password) {
-    this.password = password;
-    this.password_hash = await bcrypt.hash(this.password, 8);
+  async findOne(obj) {
+    return await UserModel.findOne(obj);
   }
 
-  async checkPassword(password) {
-    return (await bcrypt.compare(password, this.password_hash));
+  loadJSON(json) {
+    this.setUser(this.cleanUpJSON(json));
+    return this;
   }
 
-  async userExists() {
-    const teste = !!(await UserRepository.findOne({ email: this.email }));
-    return !!(await UserRepository.findOne({ email: this.email }));
+  setUser(json) {
+    for (const key in this) {
+      delete this[key];
+    }
+    for (const key in json) {
+      if (json[key]) {
+        this[key] = json[key];
+      }
+    }
   }
 
-  setFields(e) {
-    this.name = e.name || this.name;
-    this.email = e.email || this.email;
-    this.admin = e.admin || this.admin;
+  cleanUpJSON(json) {
+    return {
+      _id: json._id || null,
+      name: json.name || null,
+      email: json.email || null,
+      img: json.img || null,
+      password: json.password || null,
+      admin: json.admin || null
+    };
   }
 
   async create() {
-    try {
-      if((await this.userExists())) {
-        throw new UserException('Email already exists.');
+    return await UserModel.create(this);
+  }
+  
+  async update(fields) {
+    await this.updateFields(fields);
+    return (await UserModel.findOneAndUpdate({ _id: Types.ObjectId(this._id) }, this, { new: true }));
+  }
+
+  async userExists(email) {
+    return !!(await UserModel.findOne({ email }));
+  }
+
+  async updateFields(fields) {
+    for (const key in fields) {
+      if (key == 'password' || key == '_id') continue;
+      if (key == 'new_password') {
+        this.password = await bcrypt.hash(fields[key], 8);
+        continue;
       }
-      await this.setPassword_hash(this.password);
-      return (await UserRepository.create(this.toJSON()));
-    } catch (Exception) {
-      if (Exception instanceof UserException) {
-        throw Exception;  
-      }
-      throw new UserException('Internal error.', 500);
+      this[key] = fields[key];
     }
   }
 
-  async update(fields) {
-    try {
-      if (this.email !== fields.email && (await userExists())) {
-        throw new UserException('Email already exists.');
-      }
-      this.setFields(fields);
-      if (fields.new_password) {
-        await this.setPassword_hash(fields.new_password);
-      }
-      return (await UserRepository.findOneAndUpdate({ _id: Types.ObjectId(this._id) }, this.toJSON(), { new: true }));
-    } catch (Exception) {
-      if (Exception instanceof UserException) {
-        throw Exception;
-      }
-      console.log("teste",Exception)
-      throw new UserException('Internal error.', 500);
-    }
-  }
-  
   toJSON() {
     return {
+      _id: this._id,
       name: this.name,
       email: this.email,
-      password_hash: this.password_hash,
+      img: this.img,
+      password: this.password,
       admin: this.admin
     };
   }
-  */
+
+  toPublicJSON() {
+    return {
+      _id: this._id,
+      name: this.name,
+      email: this.email,
+      img: this.img,
+      admin: this.admin
+    };
+  }
 
 }
 
 export default User;
-
-
-/*import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-
-const defaultString = {
-  type: String,
-  required: true,
-  trim: true
-};
-
-const UserSchema = new mongoose.Schema({
-  name: defaultString,
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-    unique: true
-  },
-  password_hash: defaultString,
-  admin: { type: Boolean, required: true, default: false }
-}, { timestamps: true });
-// TODO - Alterar o nome dos campos: timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
-
-export default mongoose.model('User', UserSchema);*/

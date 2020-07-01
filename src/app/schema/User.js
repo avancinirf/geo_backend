@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 const Schema = mongoose.Schema;
 
 const defaultString = {
@@ -15,8 +16,19 @@ const UserSchema = new Schema({
     trim: true,
     unique: true
   },
-  password_hash: defaultString,
+  img: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  password: defaultString,
   admin: { type: Boolean, required: true, default: false }
 }, { timestamps: true });
-// TODO - Alterar o nome dos campos: timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
+
+UserSchema.pre('save', async function(next) {
+  this.password = await bcrypt.hash(this.password, 8);
+  next();
+});
+
+
 export default mongoose.model('User', UserSchema);
